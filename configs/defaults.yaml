@@ -1,0 +1,90 @@
+seed: 1337
+output_dir: outputs
+
+dataset:
+  name: visdrone
+  root: data/visdrone
+  train_split: train
+  val_split: val
+  label_mode: human_unified_single
+  visdrone_people_policy: merge
+  visdrone_ignore_category_ids: [0]
+  tinyperson_person_names: [person, people, pedestrian]
+  tinyperson_person_ids: [1, person]
+  image_size: 1024
+  max_size: 1024
+  pad_divisor: 32
+  num_workers: 2
+
+train:
+  epochs: 12
+  batch_size: 2
+  lr: 0.0002
+  backbone_lr_mult: 0.25
+  weight_decay: 0.0001
+  amp: true
+  grad_clip_norm: 1.0
+  log_every: 20
+  validate_every: 1
+  resume: null
+
+model:
+  mode: baseline
+  num_classes: 1
+  fpn_channels: 128
+  score_threshold: 0.05
+  nms_threshold: 0.5
+  max_detections: 300
+  decode_during_train: false
+  use_objectness: true
+  cape:
+    enabled: false
+    num_hypotheses: 128
+    hypothesis_dim: 16
+    latent_dim: 64
+    num_primitives: 4
+    footprint_size: 11
+    max_active_hypotheses: 64
+    max_refinement_steps: 3
+    enable_renderer: true
+    enable_refinement: true
+    enable_value_head: true
+    enable_sparsity_loss: false
+    enable_value_calibration: false
+    min_box_frac: 0.004
+    max_box_frac: 0.20
+
+loss:
+  global_cls: 1.0
+  global_box: 5.0
+  global_obj: 1.0
+  cape_box: 5.0
+  cape_center: 1.0
+  cape_size: 1.0
+  cape_cls: 1.0
+  cape_conf: 1.0
+  footprint: 0.2
+  sparsity: 0.05
+  value: 0.0
+
+eval:
+  mode: human_unified_single
+  size_bins:
+    tiny: [0, 256]
+    small: [256, 1024]
+    medium_plus: [1024, null]
+  iou_thresholds: [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
+  sar_iou_thresholds: [0.3, 0.5]
+  threshold_grid:
+    start: 0.0
+    stop: 1.0
+    step: 0.01
+  default_threshold: 0.05
+  high_recall_target: 0.90
+  low_fp_target: 1.0
+
+benchmark:
+  warmup_iters: 10
+  timed_iters: 50
+  flops: optional
+  energy: optional

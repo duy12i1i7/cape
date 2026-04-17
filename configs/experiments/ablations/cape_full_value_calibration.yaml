@@ -1,0 +1,10 @@
+_base_:
+  - ../visdrone_cape.yaml
+
+model:
+  cape:
+    enabled: true
+    enable_value_calibration: true
+
+loss:
+  value: 0.1

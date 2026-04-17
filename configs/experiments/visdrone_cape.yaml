@@ -1,0 +1,15 @@
+_base_:
+  - ../defaults.yaml
+  - ../datasets/visdrone.yaml
+  - ../model/cape.yaml
+
+dataset:
+  name: visdrone
+  label_mode: human_unified_single
+  visdrone_people_policy: merge
+
+model:
+  mode: cape
+  num_classes: 1
+  cape:
+    enabled: true

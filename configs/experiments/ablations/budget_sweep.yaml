@@ -1,0 +1,6 @@
+_base_:
+  - ../visdrone_cape.yaml
+
+budget_sweep:
+  max_active_hypotheses: [16, 32, 64, 128]
+  max_refinement_steps: [0, 1, 2, 3]

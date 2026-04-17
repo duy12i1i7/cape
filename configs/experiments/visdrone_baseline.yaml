@@ -1,0 +1,13 @@
+_base_:
+  - ../defaults.yaml
+  - ../datasets/visdrone.yaml
+  - ../model/baseline.yaml
+
+dataset:
+  name: visdrone
+  label_mode: human_unified_single
+  visdrone_people_policy: merge
+
+model:
+  mode: baseline
+  num_classes: 1

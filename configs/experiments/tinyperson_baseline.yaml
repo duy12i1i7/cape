@@ -1,0 +1,12 @@
+_base_:
+  - ../defaults.yaml
+  - ../datasets/tinyperson.yaml
+  - ../model/baseline.yaml
+
+dataset:
+  name: tinyperson
+  label_mode: human_unified_single
+
+model:
+  mode: baseline
+  num_classes: 1

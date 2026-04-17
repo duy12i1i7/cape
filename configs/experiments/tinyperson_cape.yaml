@@ -1,0 +1,14 @@
+_base_:
+  - ../defaults.yaml
+  - ../datasets/tinyperson.yaml
+  - ../model/cape.yaml
+
+dataset:
+  name: tinyperson
+  label_mode: human_unified_single
+
+model:
+  mode: cape
+  num_classes: 1
+  cape:
+    enabled: true

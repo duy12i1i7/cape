@@ -1,0 +1,10 @@
+_base_:
+  - ../visdrone_cape.yaml
+
+model:
+  cape:
+    enabled: true
+    enable_renderer: false
+    enable_refinement: false
+    enable_value_head: false
+    max_refinement_steps: 0

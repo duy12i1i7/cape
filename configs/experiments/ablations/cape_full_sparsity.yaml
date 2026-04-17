@@ -1,0 +1,10 @@
+_base_:
+  - ../visdrone_cape.yaml
+
+model:
+  cape:
+    enabled: true
+    enable_sparsity_loss: true
+
+loss:
+  sparsity: 0.05

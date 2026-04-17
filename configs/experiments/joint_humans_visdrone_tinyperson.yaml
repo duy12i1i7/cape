@@ -1,0 +1,15 @@
+_base_:
+  - ../defaults.yaml
+  - ../model/cape.yaml
+
+dataset:
+  name: joint_humans_visdrone_tinyperson
+  datasets:
+    - configs/datasets/visdrone.yaml
+    - configs/datasets/tinyperson.yaml
+  label_mode: human_unified_single
+  visdrone_people_policy: merge
+
+model:
+  mode: cape
+  num_classes: 1

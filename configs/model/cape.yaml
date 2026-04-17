@@ -1,0 +1,25 @@
+model:
+  mode: cape
+  num_classes: 1
+  fpn_channels: 128
+  score_threshold: 0.05
+  nms_threshold: 0.5
+  max_detections: 300
+  decode_during_train: false
+  use_objectness: true
+  cape:
+    enabled: true
+    num_hypotheses: 128
+    hypothesis_dim: 16
+    latent_dim: 64
+    num_primitives: 4
+    footprint_size: 11
+    max_active_hypotheses: 64
+    max_refinement_steps: 3
+    enable_renderer: true
+    enable_refinement: true
+    enable_value_head: true
+    enable_sparsity_loss: false
+    enable_value_calibration: false
+    min_box_frac: 0.004
+    max_box_frac: 0.20

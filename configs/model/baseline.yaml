@@ -1,0 +1,11 @@
+model:
+  mode: baseline
+  num_classes: 1
+  fpn_channels: 128
+  score_threshold: 0.05
+  nms_threshold: 0.5
+  max_detections: 300
+  decode_during_train: false
+  use_objectness: true
+  cape:
+    enabled: false

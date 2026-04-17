@@ -1,0 +1,64 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Build and packaging artifacts
+build/
+dist/
+*.egg-info/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# IDE and editor state
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dataset roots and generated experiment outputs
+data/
+datasets/
+outputs/
+runs/
+wandb/
+mlruns/
+
+# Model checkpoints and large binary artifacts
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.engine
+
+# Generated reports and temporary evaluation artifacts outside outputs/
+predictions.json
+targets.json
+metrics.json
+metrics_rows.json
+
+# Logs and temporary files
+*.log
+*.tmp
+tmp/
+temp/
