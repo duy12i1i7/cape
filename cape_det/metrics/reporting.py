@@ -189,6 +189,16 @@ def validate_metrics_rows(metrics_rows: list[dict]) -> None:
                 raise ValueError(f"metrics row {row_idx} missing operating point source: {col}")
 
 
+def validate_figure_rows(metrics_rows: list[dict]) -> None:
+    for row_idx, row in enumerate(metrics_rows):
+        if "threshold_sweep" not in row:
+            raise ValueError(f"metrics row {row_idx} missing threshold_sweep for Figure 2/Figure 3 CSV export")
+        if "pr_curve" not in row:
+            raise ValueError(f"metrics row {row_idx} missing pr_curve for Figure 1 CSV export")
+        if "operating_points" not in row:
+            raise ValueError(f"metrics row {row_idx} missing operating_points for Figure 3 markers")
+
+
 def write_all_tables(metrics_rows: list[dict], output_dir: str | Path = "outputs/reports") -> dict[str, Path]:
     output_dir = ensure_dir(output_dir)
     validate_metrics_rows(metrics_rows)
@@ -225,7 +235,7 @@ def plot_required_figures(metrics_rows: list[dict], output_dir: str | Path = "ou
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    validate_metrics_rows(metrics_rows)
+    validate_figure_rows(metrics_rows)
     output_dir = ensure_dir(output_dir)
     paths: dict[str, Path] = {}
 

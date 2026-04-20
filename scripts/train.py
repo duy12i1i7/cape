@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from cape_det.datasets import default_experiment_config, resolve_dataset_config
+from cape_det.datasets.cli import add_tinyperson_manual_args, apply_tinyperson_manual_paths
 from cape_det.utils.config import load_config
 
 
@@ -21,6 +22,7 @@ def main() -> None:
     parser.add_argument("--prepared-root", default=None, help="Prepared dataset root override.")
     parser.add_argument("--no-download", action="store_true", help="Do not attempt dataset download when raw data is missing.")
     parser.add_argument("--force-prepare", action="store_true", help="Rebuild the prepared dataset even if validation passes.")
+    add_tinyperson_manual_args(parser)
     parser.add_argument("--epochs", type=int, default=None)
     parser.add_argument("--batch-size", type=int, default=None)
     parser.add_argument("--num-workers", type=int, default=None)
@@ -38,6 +40,7 @@ def main() -> None:
         config_path = default_experiment_config(args.dataset, args.model_mode)
 
     config = load_config(config_path)
+    config = apply_tinyperson_manual_paths(config, args)
     config = resolve_dataset_config(
         config,
         dataset_name=args.dataset,

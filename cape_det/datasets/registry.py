@@ -51,7 +51,10 @@ def _visdrone_urls() -> tuple[str, ...]:
 
 
 def _tinyperson_urls() -> tuple[str, ...]:
-    return _split_env_urls(os.environ.get("TINYPERSON_DOWNLOAD_URLS") or os.environ.get("TINYPERSON_DOWNLOAD_URL"))
+    override = _split_env_urls(os.environ.get("TINYPERSON_DOWNLOAD_URLS") or os.environ.get("TINYPERSON_DOWNLOAD_URL"))
+    if override:
+        return override
+    return ("tinyperson://minimal",)
 
 
 DATASET_SPECS: dict[str, DatasetSpec] = {
@@ -74,8 +77,8 @@ DATASET_SPECS: dict[str, DatasetSpec] = {
         download_urls=_tinyperson_urls(),
         citation_url="https://github.com/ucas-vg/TinyBenchmark",
         notes=(
-            "TinyPerson public mirrors are not stable. Set TINYPERSON_RAW_ROOT for a local copy, "
-            "or TINYPERSON_DOWNLOAD_URLS to enable best-effort download."
+            "TinyPerson auto-download uses official Google Drive release assets when gdown is installed. "
+            "Set TINYPERSON_RAW_ROOT for a local copy or TINYPERSON_DOWNLOAD_URLS for a mirror."
         ),
     ),
 }

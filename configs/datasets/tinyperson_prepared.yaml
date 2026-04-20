@@ -9,7 +9,7 @@ dataset:
   image_dir_template: images/{split}
   annotation_file_template: labels/{split}.json
   label_mode: human_unified_single
-  tinyperson_person_names: [person, people, pedestrian]
-  tinyperson_person_ids: [1, person]
+  tinyperson_person_names: [person, people, pedestrian, sea_person, earth_person]
+  tinyperson_person_ids: [1, 2, person]
   class_names:
     - person

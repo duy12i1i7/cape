@@ -9,8 +9,8 @@ dataset:
   label_mode: human_unified_single
   visdrone_people_policy: merge
   visdrone_ignore_category_ids: [0]
-  tinyperson_person_names: [person, people, pedestrian]
-  tinyperson_person_ids: [1, person]
+  tinyperson_person_names: [person, people, pedestrian, sea_person, earth_person]
+  tinyperson_person_ids: [1, 2, person]
   image_size: 1024
   max_size: 1024
   pad_divisor: 32

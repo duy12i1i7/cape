@@ -19,35 +19,72 @@ def _log(message: str, logger: LogFn | None = None) -> None:
 
 
 def _candidate_annotation_files(raw_root: Path, split: str) -> list[Path]:
-    names = [
-        f"{split}.json",
-        f"tiny_set_{split}.json",
-        f"tiny_set_{split}_all.json",
-        f"tiny_set_{split}_all_erase.json",
-        f"tiny_set_{split}_sw640_sh512_all.json",
-        f"tiny_set_{split}_sw640_sh512_all_erase.json",
-    ]
+    aliases = [split]
+    if split == "val":
+        aliases.append("test")
+    names: list[str] = []
+    for alias in aliases:
+        names.extend(
+            [
+                f"{alias}.json",
+                f"tiny_set_{alias}.json",
+                f"tiny_set_{alias}_all.json",
+                f"tiny_set_{alias}_all_erase.json",
+                f"tiny_set_{alias}_sw640_sh512_all.json",
+                f"tiny_set_{alias}_sw640_sh512_all_erase.json",
+            ]
+        )
     candidates: list[Path] = []
     for name in names:
         candidates.extend(
             [
                 raw_root / "annotations" / name,
+                raw_root / "annotations" / "task" / name,
                 raw_root / "labels" / name,
+                raw_root / "tiny_set" / "annotations" / name,
+                raw_root / "tiny_set" / "annotations" / "task" / name,
+                raw_root / "tiny_set" / "labels" / name,
+                raw_root / "erase_with_uncertain_dataset" / "annotations" / name,
+                raw_root / "tiny_set" / "erase_with_uncertain_dataset" / "annotations" / name,
                 raw_root / name,
             ]
         )
+    lower_names = {name.lower() for name in names}
+    for path in raw_root.rglob("*.json") if raw_root.exists() else []:
+        stem = path.name.lower()
+        if stem in lower_names or split.lower() in path.stem.lower():
+            candidates.append(path)
     return candidates
 
 
 def _candidate_image_dirs(raw_root: Path, split: str) -> list[Path]:
-    return [
-        raw_root / "images" / split,
-        raw_root / "Images" / split,
-        raw_root / split,
-        raw_root / "images",
-        raw_root / "Images",
-        raw_root / "JPEGImages",
-    ]
+    aliases = [split]
+    if split == "val":
+        aliases.append("test")
+    candidates = []
+    for alias in aliases:
+        candidates.extend(
+            [
+                raw_root / "images" / alias,
+                raw_root / "Images" / alias,
+                raw_root / alias,
+                raw_root / "tiny_set" / alias,
+                raw_root / "erase_with_uncertain_dataset" / alias,
+                raw_root / "tiny_set" / "erase_with_uncertain_dataset" / alias,
+            ]
+        )
+    candidates.extend([raw_root / "images", raw_root / "Images", raw_root / "JPEGImages"])
+    if raw_root.exists():
+        image_suffixes = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
+        image_dirs = {}
+        for path in raw_root.rglob("*"):
+            if path.is_file() and path.suffix.lower() in image_suffixes:
+                image_dirs[path.parent] = image_dirs.get(path.parent, 0) + 1
+        alias_set = {alias.lower() for alias in aliases}
+        split_dirs = [path for path in image_dirs if alias_set.intersection({part.lower() for part in path.parts})]
+        candidates.extend(sorted(split_dirs, key=lambda p: (-image_dirs[p], str(p))))
+        candidates.extend(sorted(image_dirs, key=lambda p: (-image_dirs[p], str(p))))
+    return candidates
 
 
 def _resolve_manual_path(config: dict[str, Any] | None, split: str, key: str) -> Path | None:

@@ -6,3 +6,4 @@ scipy>=1.10
 torch>=2.1
 tqdm>=4.66
 pytest>=7.4
+gdown>=5.2

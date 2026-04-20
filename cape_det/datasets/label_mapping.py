@@ -35,11 +35,11 @@ class LabelMapper:
         self,
         label_mode: str = "human_unified_single",
         visdrone_people_policy: str = "merge",
-        tinyperson_person_names: tuple[str, ...] = ("person", "people", "pedestrian"),
+        tinyperson_person_names: tuple[str, ...] = ("person", "people", "pedestrian", "sea_person", "earth_person"),
         dataset_name: str | None = None,
         visdrone_category_names: dict[int | str, str] | None = None,
         visdrone_ignore_category_ids: tuple[int | str, ...] = (0,),
-        tinyperson_person_ids: tuple[int | str, ...] = (1, "person"),
+        tinyperson_person_ids: tuple[int | str, ...] = (1, 2, "person"),
     ) -> None:
         if label_mode not in {"human_unified_single", "human_split"}:
             raise ValueError(f"Unsupported label_mode: {label_mode}")
@@ -139,8 +139,10 @@ def build_label_mapper(config: dict[str, Any]) -> LabelMapper:
         visdrone_people_policy=dataset_cfg.get("visdrone_people_policy", "merge"),
         visdrone_category_names=dataset_cfg.get("visdrone_category_names"),
         visdrone_ignore_category_ids=tuple(dataset_cfg.get("visdrone_ignore_category_ids", (0,))),
-        tinyperson_person_names=tuple(dataset_cfg.get("tinyperson_person_names", ("person", "people", "pedestrian"))),
-        tinyperson_person_ids=tuple(dataset_cfg.get("tinyperson_person_ids", (1, "person"))),
+        tinyperson_person_names=tuple(
+            dataset_cfg.get("tinyperson_person_names", ("person", "people", "pedestrian", "sea_person", "earth_person"))
+        ),
+        tinyperson_person_ids=tuple(dataset_cfg.get("tinyperson_person_ids", (1, 2, "person"))),
         dataset_name=dataset_cfg.get("name"),
     )
 

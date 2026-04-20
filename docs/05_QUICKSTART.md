@@ -23,11 +23,13 @@ Roots:
 - `CAPE_DATA_ROOT`: default parent for raw and prepared data.
 - `VISDRONE_RAW_ROOT`: existing VisDrone raw data.
 - `TINYPERSON_RAW_ROOT`: existing TinyPerson raw data.
-- `TINYPERSON_DOWNLOAD_URLS`: optional comma-separated TinyPerson archive URLs.
+- `TINYPERSON_DOWNLOAD_URLS`: optional comma-separated TinyPerson archive,
+  mirror, or Google Drive folder URLs.
 
 VisDrone uses best-effort public DET archives when raw data is missing.
-TinyPerson is prepared automatically from a local raw root or user-supplied
-download URLs because stable public mirrors are not guaranteed.
+TinyPerson uses the official TinyBenchmark Google Drive release assets through
+`gdown`, and is also prepared automatically from a local raw root or
+user-supplied download URLs.
 
 Manual TinyPerson COCO-style fallback:
 
@@ -40,6 +42,11 @@ python scripts/prepare_datasets.py \
   --val-json /path/to/val.json \
   --no-download
 ```
+
+The same TinyPerson manual flags can be passed directly to `train.py`,
+`evaluate.py`, and `budget_sweep.py`. The `avis`-style aliases also work:
+`--tinyperson-train-images`, `--tinyperson-train-json`,
+`--tinyperson-val-images`, and `--tinyperson-val-json`.
 
 ## Train
 

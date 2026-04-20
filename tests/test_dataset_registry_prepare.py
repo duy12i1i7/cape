@@ -6,6 +6,7 @@ from pathlib import Path
 from PIL import Image
 
 from cape_det.datasets.prepare import ensure_prepared_dataset
+from cape_det.datasets.download import download_and_extract
 from cape_det.datasets.registry import dataset_prepared_root, dataset_raw_root, get_dataset_spec
 from cape_det.datasets.validators import validate_prepared_dataset
 
@@ -33,6 +34,29 @@ def _write_tinyperson_raw(root: Path) -> None:
             "annotations": [{"id": 1, "image_id": split, "category_id": 1, "bbox": [1, 2, 5, 6]}],
         }
         ann_dir.joinpath(f"{split}.json").write_text(json.dumps(data), encoding="utf-8")
+
+
+def _write_tinyperson_official_like_raw(root: Path) -> None:
+    for split in ["train", "test"]:
+        image_dir = root / "tiny_set" / split
+        image_dir.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (32, 24)).save(image_dir / f"{split}.jpg")
+    train = {
+        "images": [{"id": 1, "file_name": "train.jpg", "width": 32, "height": 24}],
+        "categories": [{"id": 1, "name": "sea_person"}, {"id": 2, "name": "earth_person"}],
+        "annotations": [{"id": 1, "image_id": 1, "category_id": 1, "bbox": [1, 2, 5, 6]}],
+    }
+    val = {
+        "images": [{"id": 2, "file_name": "test.jpg", "width": 32, "height": 24}],
+        "categories": [{"id": 1, "name": "sea_person"}, {"id": 2, "name": "earth_person"}],
+        "annotations": [{"id": 2, "image_id": 2, "category_id": 2, "bbox": [2, 2, 4, 5]}],
+    }
+    train_ann = root / "tiny_set" / "annotations"
+    val_ann = root / "tiny_set" / "annotations" / "task"
+    train_ann.mkdir(parents=True, exist_ok=True)
+    val_ann.mkdir(parents=True, exist_ok=True)
+    train_ann.joinpath("tiny_set_train.json").write_text(json.dumps(train), encoding="utf-8")
+    val_ann.joinpath("tiny_set_test_all.json").write_text(json.dumps(val), encoding="utf-8")
 
 
 def test_registry_env_roots(monkeypatch, tmp_path: Path):
@@ -66,6 +90,41 @@ def test_tinyperson_prepare_from_coco_raw(tmp_path: Path):
     summary = validate_prepared_dataset("tinyperson", prepared, splits=("train", "val"))
     assert summary["splits"]["val"]["images"] == 1
     assert (prepared / "labels" / "train.json").exists()
+
+
+def test_tinyperson_official_train_test_layout_maps_to_train_val(tmp_path: Path):
+    raw = tmp_path / "raw_tiny_official"
+    prepared = tmp_path / "prepared_tiny_official"
+    _write_tinyperson_official_like_raw(raw)
+    result = ensure_prepared_dataset("tinyperson", raw_root=raw, prepared_root=prepared, allow_download=False)
+    assert Path(result["config_path"]).exists()
+    summary = validate_prepared_dataset("tinyperson", prepared, splits=("train", "val"))
+    assert summary["splits"]["train"]["images"] == 1
+    assert summary["splits"]["val"]["images"] == 1
+    dataset_cfg = result["config"]["dataset"]
+    assert "sea_person" in dataset_cfg["tinyperson_person_names"]
+    assert 2 in dataset_cfg["tinyperson_person_ids"]
+
+
+def test_tinyperson_minimal_download_dispatch_is_mockable(monkeypatch, tmp_path: Path):
+    downloaded = []
+
+    def fake_gdrive_file(url, destination, logger=None):
+        path = Path(destination)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"fake")
+        downloaded.append(path)
+        return path
+
+    def fake_extract(root, logger=None):
+        return [Path(root) / "tiny_set" / "train", Path(root) / "tiny_set" / "test"]
+
+    monkeypatch.setattr("cape_det.datasets.download.download_google_drive_file", fake_gdrive_file)
+    monkeypatch.setattr("cape_det.datasets.download.extract_archives_under", fake_extract)
+    paths = download_and_extract(["tinyperson://minimal"], tmp_path / "raw_tiny")
+    assert len(downloaded) == 4
+    assert any(path.name == "tiny_set_train.json" for path in downloaded)
+    assert paths[-1] == tmp_path / "raw_tiny" / "tiny_set" / "test"
 
 
 def test_download_dispatch_is_mockable(monkeypatch, tmp_path: Path):

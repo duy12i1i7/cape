@@ -4,36 +4,20 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from cape_det.datasets import default_experiment_config, ensure_prepared_dataset
+from cape_det.datasets.cli import add_tinyperson_manual_args, apply_tinyperson_manual_paths
 from cape_det.utils.config import load_config
 from cape_det.utils.io import write_json
-
-
-def _manual_paths(args: argparse.Namespace) -> dict[str, Any]:
-    manual: dict[str, Any] = {}
-    for split in ["train", "val", "test"]:
-        image_dir = getattr(args, f"{split}_images")
-        annotation_file = getattr(args, f"{split}_json")
-        if image_dir or annotation_file:
-            manual[split] = {}
-            if image_dir:
-                manual[split]["image_dir"] = image_dir
-            if annotation_file:
-                manual[split]["annotation_file"] = annotation_file
-    return manual
 
 
 def _prepare_one(dataset: str, args: argparse.Namespace) -> dict[str, Any]:
     config_path = Path(args.config) if args.config else default_experiment_config(dataset, args.model_mode)
     config = load_config(config_path)
-    manual = _manual_paths(args)
-    if manual:
-        config.setdefault("dataset", {})["manual_paths"] = manual
+    config = apply_tinyperson_manual_paths(config, args)
     return ensure_prepared_dataset(
         dataset,
         config=config,
@@ -54,12 +38,7 @@ def main() -> None:
     parser.add_argument("--no-download", action="store_true")
     parser.add_argument("--force-prepare", action="store_true")
     parser.add_argument("--summary-output", default=None)
-    parser.add_argument("--train-images", default=None, help="TinyPerson manual train image directory.")
-    parser.add_argument("--train-json", default=None, help="TinyPerson manual train COCO json.")
-    parser.add_argument("--val-images", default=None, help="TinyPerson manual val image directory.")
-    parser.add_argument("--val-json", default=None, help="TinyPerson manual val COCO json.")
-    parser.add_argument("--test-images", default=None, help="TinyPerson manual test image directory.")
-    parser.add_argument("--test-json", default=None, help="TinyPerson manual test COCO json.")
+    add_tinyperson_manual_args(parser)
     args = parser.parse_args()
 
     datasets = ["visdrone", "tinyperson"] if args.dataset == "both" else [args.dataset]

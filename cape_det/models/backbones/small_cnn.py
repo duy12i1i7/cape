@@ -4,15 +4,22 @@ import torch
 from torch import nn
 
 
+def _norm(channels: int) -> nn.Module:
+    groups = 8
+    while channels % groups != 0 and groups > 1:
+        groups //= 2
+    return nn.GroupNorm(groups, channels)
+
+
 class ConvBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, stride: int = 1) -> None:
         super().__init__()
         self.block = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, 3, stride=stride, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
+            _norm(out_channels),
             nn.SiLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, 3, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
+            _norm(out_channels),
             nn.SiLU(inplace=True),
         )
 

@@ -86,8 +86,8 @@ def write_prepared_config(
         dataset_cfg.update(
             {
                 "annotation_file_template": "labels/{split}.json",
-                "tinyperson_person_names": ["person", "people", "pedestrian"],
-                "tinyperson_person_ids": [1, "person"],
+                "tinyperson_person_names": ["person", "people", "pedestrian", "sea_person", "earth_person"],
+                "tinyperson_person_ids": [1, 2, "person"],
             }
         )
         if label_mode == "human_split":

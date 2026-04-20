@@ -38,7 +38,8 @@ Environment variables:
 - `CAPE_DATA_ROOT`: default root for `raw/` and `prepared/`.
 - `VISDRONE_RAW_ROOT`: manual VisDrone raw root override.
 - `TINYPERSON_RAW_ROOT`: manual TinyPerson raw root override.
-- `TINYPERSON_DOWNLOAD_URLS`: optional comma-separated TinyPerson archive URLs.
+- `TINYPERSON_DOWNLOAD_URLS`: optional comma-separated TinyPerson archive,
+  mirror, or Google Drive folder URLs.
 
 Default prepared layout:
 
@@ -59,9 +60,10 @@ data/
 ```
 
 VisDrone auto-download uses public VisDrone DET archives mirrored by
-Ultralytics when no raw root is present. TinyPerson public mirrors are not
-stable; CAPE auto-prepares from `TINYPERSON_RAW_ROOT`, manual COCO-style paths,
-or URLs supplied through `TINYPERSON_DOWNLOAD_URLS`.
+Ultralytics when no raw root is present. TinyPerson auto-download uses the
+official TinyBenchmark Google Drive release assets through `gdown`; CAPE also
+auto-prepares from `TINYPERSON_RAW_ROOT`, manual COCO-style paths, or URLs
+supplied through `TINYPERSON_DOWNLOAD_URLS`.
 
 ## One-Command Dataset Preparation
 
@@ -82,6 +84,11 @@ python scripts/prepare_datasets.py \
   --val-json /path/to/val.json \
   --no-download
 ```
+
+The manual TinyPerson flags also work on `train.py`, `evaluate.py`,
+`budget_sweep.py`, `benchmark_latency.py`, and `sanity_check_dataset.py`.
+They have `avis`-style aliases such as `--tinyperson-train-images` and
+`--tinyperson-val-json`.
 
 ## Training
 
@@ -178,6 +185,9 @@ Primary benchmark mode is `human_unified_single`.
 - VisDrone `people` maps to `person` when `visdrone_people_policy: merge`,
   or is ignored when `visdrone_people_policy: ignore`.
 - TinyPerson `person` maps to `person`.
+- TinyPerson official `sea_person` and `earth_person` categories also map to
+  `person` by default; override `tinyperson_person_names` or
+  `tinyperson_person_ids` in config for a different release.
 
 Secondary mode is `human_split`, where VisDrone preserves `pedestrian` and
 `people`, while TinyPerson remains `person`.
@@ -196,6 +206,5 @@ python scripts/train.py --dataset tinyperson --smoke
 ## Current Scope
 
 This is a runnable research prototype, not a production detector. FLOPs and
-energy/image are optional and remain `NaN` when unsupported. TinyPerson download
-depends on a user-supplied mirror or local raw data, while VisDrone has a
-best-effort public archive path.
+energy/image are optional and remain `NaN` when unsupported. Dataset downloads
+depend on upstream VisDrone and TinyPerson hosts remaining available.

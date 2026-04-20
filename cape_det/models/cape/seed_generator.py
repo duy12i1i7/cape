@@ -33,14 +33,23 @@ class HypothesisSeedGenerator(nn.Module):
         latent_map = self.latent_head(x).flatten(2).transpose(1, 2)
         gather_param = indices.unsqueeze(-1).expand(-1, -1, self.hypothesis_dim)
         gather_latent = indices.unsqueeze(-1).expand(-1, -1, self.latent_dim)
-        params = params_map.gather(1, gather_param)
+        raw_params = params_map.gather(1, gather_param)
         latent = latent_map.gather(1, gather_latent)
 
         ys = torch.div(indices, w, rounding_mode="floor").to(feature.dtype)
         xs = (indices % w).to(feature.dtype)
         centers = torch.stack(((xs + 0.5) / max(w, 1), (ys + 0.5) / max(h, 1)), dim=-1)
-        params = params.clone()
-        params[..., 0:2] = torch.logit(centers.clamp(1e-4, 1 - 1e-4))
-        params[..., 2:4] = params[..., 2:4].clamp(-2.0, 2.0)
-        params[..., 11] = torch.logit(scores.clamp(1e-4, 1 - 1e-4))
+        center_logits = torch.logit(centers.clamp(1e-4, 1 - 1e-4))
+        size_logits = raw_params[..., 2:4].clamp(-2.0, 2.0)
+        conf_logits = torch.logit(scores.clamp(1e-4, 1 - 1e-4)).unsqueeze(-1)
+        params = torch.cat(
+            [
+                center_logits,
+                size_logits,
+                raw_params[..., 4:11],
+                conf_logits,
+                raw_params[..., 12:],
+            ],
+            dim=-1,
+        )
         return params, latent, scores

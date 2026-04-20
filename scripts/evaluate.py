@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from cape_det.datasets import default_experiment_config, resolve_dataset_config, validate_label_mapper_num_classes
+from cape_det.datasets.cli import add_tinyperson_manual_args, apply_tinyperson_manual_paths
 from cape_det.metrics.latency import benchmark_latency
 from cape_det.metrics.reporting import write_all_reports
 from cape_det.metrics.unified_evaluator import UnifiedEvaluator
@@ -125,6 +126,7 @@ def main() -> None:
     parser.add_argument("--prepared-root", default=None)
     parser.add_argument("--no-download", action="store_true")
     parser.add_argument("--force-prepare", action="store_true")
+    add_tinyperson_manual_args(parser)
     args = parser.parse_args()
 
     config_path = Path(args.config) if args.config else None
@@ -134,6 +136,7 @@ def main() -> None:
         config_path = default_experiment_config(args.dataset, args.model_mode)
 
     config = load_config(config_path)
+    config = apply_tinyperson_manual_paths(config, args)
     config = resolve_dataset_config(
         config,
         dataset_name=args.dataset,

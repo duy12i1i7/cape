@@ -16,6 +16,7 @@ dependencies = [
   "scipy>=1.10",
   "torch>=2.1",
   "tqdm>=4.66",
+  "gdown>=5.2",
 ]
 
 [project.optional-dependencies]

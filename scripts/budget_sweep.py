@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from cape_det.datasets import default_experiment_config, resolve_dataset_config
+from cape_det.datasets.cli import add_tinyperson_manual_args, apply_tinyperson_manual_paths
 from cape_det.metrics.reporting import verify_report_files, write_all_reports
 from cape_det.utils.config import deep_merge, load_config
 from cape_det.utils.io import write_json
@@ -58,6 +59,7 @@ def main() -> None:
     parser.add_argument("--prepared-root", default=None)
     parser.add_argument("--no-download", action="store_true")
     parser.add_argument("--force-prepare", action="store_true")
+    add_tinyperson_manual_args(parser)
     args = parser.parse_args()
 
     if args.config:
@@ -72,6 +74,7 @@ def main() -> None:
             "max_active_hypotheses": [16, 32, 64, 128],
             "max_refinement_steps": [0, 1, 2, 3],
         }
+    base_config = apply_tinyperson_manual_paths(base_config, args)
     base_config = resolve_dataset_config(
         base_config,
         dataset_name=args.dataset,
