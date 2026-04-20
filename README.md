@@ -3,57 +3,174 @@
 CAPE-Det is a research prototype for tiny-person detection on VisDrone and
 TinyPerson under one unified SAR-oriented evaluation protocol.
 
-The implementation follows the docs in `docs/`:
+The implementation follows `docs/` as the source of truth:
 
-- CAPE is hypothesis-centric: the unit of computation is a compact human
-  hypothesis, not a patch, tile, crop, or second-stage region.
-- CAPE is compositional: each hypothesis mixes learned primitives.
-- CAPE is degradation-aware: rendered footprints model tiny-person evidence
-  after blur/smoothing.
-- CAPE is budgeted over hypotheses: refinement depth is allocated to active
-  hypotheses only.
-- VisDrone and TinyPerson share the same primary human-centric evaluation.
+- Hypothesis-centric: CAPE refines compact human hypotheses, not patches,
+  tiles, crops, or second-stage regions.
+- Compositional: each hypothesis mixes learned primitive footprints.
+- Degradation-aware: rendered footprints model tiny-person evidence after
+  smoothing/blur-like degradation.
+- Budgeted: refinement budget is allocated over hypotheses.
+- Unified: VisDrone and TinyPerson share the same human-centric evaluator and
+  benchmark schema.
 
-## Repository Structure
+## Setup
 
-```text
-configs/              YAML configs for datasets, models, experiments, ablations
-cape_det/datasets/    VisDrone/TinyPerson parsers and unified label mapping
-cape_det/models/      Lightweight baseline detector and CAPE branch
-cape_det/losses/      Detector, CAPE, matching, and composite losses
-cape_det/metrics/     Unified AP/SAR/threshold metrics, tables, curves, latency
-cape_det/trainers/    Training loop, builders, checkpoints
-cape_det/utils/       Config, logging, NMS, profiling, visualization helpers
-scripts/              CLI entrypoints
-tests/                Minimal parser, model, loss, evaluator, reporting tests
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
 ```
 
-## Dataset Layout
+The runner script performs the same setup automatically:
 
-Set dataset paths in `configs/datasets/visdrone.yaml` and
-`configs/datasets/tinyperson.yaml`.
-
-Expected VisDrone layout:
-
-```text
-VisDrone/
-  images/train/*.jpg
-  images/val/*.jpg
-  annotations/train/*.txt
-  annotations/val/*.txt
+```bash
+bash run_cape_multidataset.sh --stage prepare --dataset visdrone
 ```
 
-Expected TinyPerson layout is COCO-like:
+## Dataset Roots
+
+CAPE uses a raw cache and a prepared internal layout.
+
+Environment variables:
+
+- `CAPE_DATA_ROOT`: default root for `raw/` and `prepared/`.
+- `VISDRONE_RAW_ROOT`: manual VisDrone raw root override.
+- `TINYPERSON_RAW_ROOT`: manual TinyPerson raw root override.
+- `TINYPERSON_DOWNLOAD_URLS`: optional comma-separated TinyPerson archive URLs.
+
+Default prepared layout:
 
 ```text
-TinyPerson/
-  images/train/*.jpg
-  images/val/*.jpg
-  annotations/train.json
-  annotations/val.json
+data/
+  raw/
+    visdrone/
+    tinyperson/
+  prepared/
+    visdrone/
+      images/{train,val,test}/
+      labels/{train,val,test}/
+      metadata/visdrone_prepared.yaml
+    tinyperson/
+      images/{train,val,test}/
+      labels/{train,val,test}.json
+      metadata/tinyperson_prepared.yaml
 ```
 
-## Label Mapping
+VisDrone auto-download uses public VisDrone DET archives mirrored by
+Ultralytics when no raw root is present. TinyPerson public mirrors are not
+stable; CAPE auto-prepares from `TINYPERSON_RAW_ROOT`, manual COCO-style paths,
+or URLs supplied through `TINYPERSON_DOWNLOAD_URLS`.
+
+## One-Command Dataset Preparation
+
+```bash
+python scripts/prepare_datasets.py --dataset visdrone
+python scripts/prepare_datasets.py --dataset tinyperson
+python scripts/prepare_datasets.py --dataset both
+```
+
+Manual TinyPerson fallback:
+
+```bash
+python scripts/prepare_datasets.py \
+  --dataset tinyperson \
+  --train-images /path/to/train/images \
+  --train-json /path/to/train.json \
+  --val-images /path/to/val/images \
+  --val-json /path/to/val.json \
+  --no-download
+```
+
+## Training
+
+Dataset names resolve automatically, prepare data if needed, validate the
+prepared layout, and then continue into training.
+
+```bash
+python scripts/train.py --dataset visdrone
+python scripts/train.py --dataset tinyperson
+```
+
+Baseline experiments are available with:
+
+```bash
+python scripts/train.py --dataset visdrone --model-mode baseline
+python scripts/train.py --dataset tinyperson --model-mode baseline
+```
+
+The default settings are single-GPU friendly: batch size 2, AMP enabled,
+gradient clipping enabled, small CNN/FPN backbone, `K=128` hypotheses, `A=64`
+active hypotheses, and `T=3` refinement steps. Training skips prediction
+decoding and final NMS by default because losses consume raw detector outputs
+and CAPE hypotheses directly.
+
+## Evaluation And Reports
+
+```bash
+python scripts/evaluate.py \
+  --dataset visdrone \
+  --checkpoint outputs/checkpoints/best.pt \
+  --reports-dir outputs/reports \
+  --figures-dir outputs/figures \
+  --export-optional-curves \
+  --measure-latency
+```
+
+Budget sweep for Table 4:
+
+```bash
+python scripts/budget_sweep.py \
+  --dataset visdrone \
+  --checkpoint outputs/checkpoints/best.pt \
+  --reports-dir outputs/reports \
+  --figures-dir outputs/figures \
+  --export-optional-curves
+```
+
+Smoke report generation without datasets or torch:
+
+```bash
+python scripts/smoke_report_generation.py --output-dir outputs/smoke_reports
+```
+
+The reporting utilities emit CSV and markdown for exactly four tables:
+
+1. `table1_unified_detection.csv` and `.md`
+2. `table2_search_and_rescue.csv` and `.md`
+3. `table3_operating_points.csv` and `.md`
+4. `table4_budget_cape_ablation.csv` and `.md`
+
+They emit PNG and CSV for exactly three required figures:
+
+1. `fig1_precision_recall.png` and `.csv`
+2. `fig2_recall_vs_fp_per_image.png` and `.csv`
+3. `fig3_confidence_threshold.png` and `.csv`
+
+Optional curve CSVs are written with `--export-optional-curves`:
+
+- `pr_by_size.csv`
+- `miss_rate_vs_fp_per_image.csv`
+- `pr_under_budget.csv`
+
+## Runner Scripts
+
+```bash
+bash run_cape_multidataset.sh --stage prepare --dataset both
+bash run_cape_multidataset.sh --stage train --dataset visdrone
+bash run_cape_multidataset.sh --stage train --dataset tinyperson
+bash run_cape_multidataset.sh --stage eval --dataset both --checkpoint outputs/checkpoints/best.pt
+bash run_cape_multidataset.sh --stage benchmark --dataset both --checkpoint outputs/checkpoints/best.pt
+```
+
+Bootstrap from outside a checkout:
+
+```bash
+bash bootstrap_cape_multidataset.sh --repo-dir cape --stage prepare --dataset visdrone
+```
+
+## Label Protocol
 
 Primary benchmark mode is `human_unified_single`.
 
@@ -65,89 +182,20 @@ Primary benchmark mode is `human_unified_single`.
 Secondary mode is `human_split`, where VisDrone preserves `pedestrian` and
 `people`, while TinyPerson remains `person`.
 
-## Training
-
-Baseline:
+## Validation
 
 ```bash
-python3 scripts/train.py --config configs/experiments/visdrone_baseline.yaml
-python3 scripts/train.py --config configs/experiments/tinyperson_baseline.yaml
+python -m compileall cape_det scripts tests
+python -m pytest -q
+python scripts/sanity_check_dataset.py --dataset visdrone --split train
+python scripts/sanity_check_dataset.py --dataset tinyperson --split train
+python scripts/train.py --dataset visdrone --smoke
+python scripts/train.py --dataset tinyperson --smoke
 ```
 
-CAPE hybrid:
+## Current Scope
 
-```bash
-python3 scripts/train.py --config configs/experiments/visdrone_cape.yaml
-python3 scripts/train.py --config configs/experiments/tinyperson_cape.yaml
-```
-
-The default settings are single-GPU friendly: batch size 2, AMP enabled,
-gradient clipping enabled, small CNN/FPN backbone, `K=128` hypotheses,
-`A=64` active hypotheses, `T=3` refinement steps.
-
-Training skips prediction decoding, merging, and final NMS by default because
-losses consume raw detector outputs and CAPE hypotheses directly. Set
-`model.decode_during_train: true` only when a debugging run needs train-time
-decoded predictions.
-
-## Evaluation and Reporting
-
-```bash
-python3 scripts/evaluate.py \
-  --config configs/experiments/visdrone_cape.yaml \
-  --checkpoint outputs/checkpoints/best.pt \
-  --reports-dir outputs/reports \
-  --figures-dir outputs/figures \
-  --export-optional-curves
-python3 scripts/make_benchmarks.py \
-  --config configs/experiments/visdrone_cape.yaml \
-  --predictions outputs/eval/predictions.json \
-  --targets outputs/eval/targets.json \
-  --reports-dir outputs/reports \
-  --figures-dir outputs/figures \
-  --metrics-output outputs/reports/metrics.json \
-  --export-optional-curves
-python3 scripts/plot_figures.py \
-  --metrics outputs/eval/metrics.json \
-  --output-dir outputs/figures \
-  --export-optional-curves
-python3 scripts/budget_sweep.py \
-  --config configs/experiments/ablations/budget_sweep.yaml \
-  --checkpoint outputs/checkpoints/best.pt \
-  --reports-dir outputs/reports \
-  --figures-dir outputs/figures \
-  --export-optional-curves
-python3 scripts/smoke_report_generation.py --output-dir outputs/smoke_reports
-```
-
-The reporting utilities emit markdown and CSV for exactly four benchmark tables:
-
-1. `table1_unified_detection.csv` and `.md`
-2. `table2_search_and_rescue.csv` and `.md`
-3. `table3_operating_points.csv` and `.md`
-4. `table4_budget_cape_ablation.csv` and `.md`
-
-They also emit PNG and CSV for exactly three required figures:
-
-1. `fig1_precision_recall.png` and `.csv`
-2. `fig2_recall_vs_fp_per_image.png` and `.csv`
-3. `fig3_confidence_threshold.png` and `.csv`
-
-When `--export-optional-curves` is passed, the same unified evaluator also
-exports:
-
-1. `pr_by_size.csv`
-2. `miss_rate_vs_fp_per_image.csv`
-3. `pr_under_budget.csv`
-
-The smoke-report command creates a synthetic two-image subset with baseline and
-CAPE rows, verifies every table column required by `docs/04_EVALUATION_PROTOCOL.md`,
-and checks that all table/figure artifacts exist and are non-empty.
-
-## Known Limitations
-
-This is a proof-of-concept implementation. The renderer uses learned primitive
-footprints and differentiable smoothing rather than full RGB image formation.
-The value-head target is an approximate detached refinement utility. FLOPs and
-energy/image are reported when optional runtime support is available and are
-otherwise emitted as `NaN` without changing table schemas.
+This is a runnable research prototype, not a production detector. FLOPs and
+energy/image are optional and remain `NaN` when unsupported. TinyPerson download
+depends on a user-supplied mirror or local raw data, while VisDrone has a
+best-effort public archive path.

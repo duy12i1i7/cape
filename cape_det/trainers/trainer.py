@@ -52,6 +52,7 @@ class Trainer:
                 grad_clip_norm=train_cfg.get("grad_clip_norm", 1.0),
                 logger=self.logger,
                 log_every=int(train_cfg.get("log_every", 20)),
+                limit_batches=train_cfg.get("limit_train_batches"),
             )
             self.logger.info("epoch=%s train=%s", epoch, train_metrics)
             if (epoch + 1) % int(train_cfg.get("validate_every", 1)) == 0:
@@ -60,7 +61,7 @@ class Trainer:
                     dataset_name=self.config.get("dataset", {}).get("name", "unknown"),
                     eval_mode=self.config.get("dataset", {}).get("label_mode", "human_unified_single"),
                 )
-                val_metrics = validate(self.model, val_loader, evaluator, self.device)
+                val_metrics = validate(self.model, val_loader, evaluator, self.device, limit_batches=train_cfg.get("limit_val_batches"))
                 self.logger.info("epoch=%s val AP50_95=%.4f AP_tiny=%.4f", epoch, val_metrics["AP50_95"], val_metrics["AP_tiny"])
                 save_checkpoint(self.checkpoint_dir / "last.pt", self.model, self.optimizer, self.scaler, epoch, val_metrics, self.config)
                 if val_metrics["AP50_95"] >= best_ap:

@@ -31,9 +31,27 @@ def test_reporting_writes_exact_four_tables(tmp_path: Path):
         "Recall_IoU_0_3": 0.5,
         "Recall_IoU_0_5": 0.4,
         "Energy_per_image": float("nan"),
+        "BudgetMode": "baseline",
+        "MaxActiveHypotheses": 0,
+        "MaxRefinementSteps": 0,
         "AvgActiveHypotheses": 0,
         "AvgRefinementBudgetUsed": 0,
-        "operating_points": {},
+        "operating_points": {
+            "Threshold_BestF1": 0.1,
+            "Precision_BestF1": 0.3,
+            "Recall_BestF1": 0.4,
+            "F1_BestF1": 0.34,
+            "Threshold_HighRecall": 0.05,
+            "Precision_HighRecall": 0.2,
+            "Recall_HighRecall": 0.9,
+            "FP_per_image_HighRecall": 3.0,
+            "Threshold_LowFP": 0.5,
+            "Precision_LowFP": 0.8,
+            "Recall_LowFP": 0.2,
+            "FP_per_image_LowFP": 0.5,
+        },
+        "threshold_sweep": [],
+        "pr_curve": [],
     }
     paths = write_all_tables([metrics], tmp_path)
     assert len(paths) == 8

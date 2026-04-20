@@ -9,8 +9,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from cape_det.datasets import default_experiment_config, resolve_dataset_config
 from cape_det.metrics.reporting import verify_report_files, write_all_reports
-from cape_det.utils.config import load_config
+from cape_det.utils.config import deep_merge, load_config
 from cape_det.utils.io import write_json
 
 
@@ -37,8 +38,9 @@ def make_budget_config(base_config: dict, max_active: int, max_steps: int) -> di
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="configs/experiments/ablations/budget_sweep.yaml")
+    parser = argparse.ArgumentParser(description="Evaluate CAPE budget settings and populate Table 4.")
+    parser.add_argument("--config", default=None)
+    parser.add_argument("--dataset", default=None, choices=["visdrone", "tinyperson"])
     parser.add_argument("--checkpoint", default=None)
     parser.add_argument("--split", default=None)
     parser.add_argument("--max-active", nargs="*", type=int, default=None)
@@ -49,9 +51,35 @@ def main() -> None:
     parser.add_argument("--metrics-output", default=None)
     parser.add_argument("--export-optional-curves", action="store_true")
     parser.add_argument("--limit-batches", type=int, default=None)
+    parser.add_argument("--no-measure-latency", action="store_true")
+    parser.add_argument("--latency-warmup-iters", type=int, default=None)
+    parser.add_argument("--latency-timed-iters", type=int, default=None)
+    parser.add_argument("--raw-root", default=None)
+    parser.add_argument("--prepared-root", default=None)
+    parser.add_argument("--no-download", action="store_true")
+    parser.add_argument("--force-prepare", action="store_true")
     args = parser.parse_args()
 
-    base_config = load_config(args.config)
+    if args.config:
+        base_config = load_config(args.config)
+        if args.dataset:
+            dataset_base = load_config(default_experiment_config(args.dataset, "cape"))
+            base_config = deep_merge(dataset_base, {"budget_sweep": base_config.get("budget_sweep", {})})
+    else:
+        dataset_name = args.dataset or "visdrone"
+        base_config = load_config(default_experiment_config(dataset_name, "cape"))
+        base_config["budget_sweep"] = {
+            "max_active_hypotheses": [16, 32, 64, 128],
+            "max_refinement_steps": [0, 1, 2, 3],
+        }
+    base_config = resolve_dataset_config(
+        base_config,
+        dataset_name=args.dataset,
+        raw_root=args.raw_root,
+        prepared_root=args.prepared_root,
+        allow_download=not args.no_download,
+        force_prepare=args.force_prepare,
+    )
     active_values = _sweep_values(base_config, "max_active_hypotheses", args.max_active)
     step_values = _sweep_values(base_config, "max_refinement_steps", args.max_steps)
 
@@ -68,6 +96,9 @@ def main() -> None:
                 checkpoint=args.checkpoint,
                 split=args.split,
                 limit_batches=args.limit_batches,
+                measure_latency=not args.no_measure_latency,
+                latency_warmup_iters=args.latency_warmup_iters,
+                latency_timed_iters=args.latency_timed_iters,
             )
             metrics_rows.append(metrics)
             write_json(metrics, output_dir / f"{budget_name}_metrics.json")

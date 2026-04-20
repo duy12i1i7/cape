@@ -37,8 +37,8 @@ dist/
 Thumbs.db
 
 # Dataset roots and generated experiment outputs
-data/
-datasets/
+/data/
+/datasets/
 outputs/
 runs/
 wandb/

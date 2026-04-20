@@ -1,0 +1,17 @@
+dataset:
+  name: tinyperson
+  registry_name: tinyperson
+  auto_prepare: true
+  root: data/prepared/tinyperson
+  raw_root: null
+  prepared_root: null
+  train_split: train
+  val_split: val
+  test_split: test
+  image_dir_template: images/{split}
+  annotation_file_template: labels/{split}.json
+  label_mode: human_unified_single
+  tinyperson_person_names: [person, people, pedestrian]
+  tinyperson_person_ids: [1, person]
+  class_names:
+    - person

@@ -17,6 +17,13 @@ def _human_targets(target: dict, device) -> tuple[torch.Tensor, torch.Tensor]:
     return boxes[keep], labels[keep]
 
 
+def _ignored_targets(target: dict, device) -> tuple[torch.Tensor, torch.Tensor]:
+    boxes = target["boxes"].to(device)
+    labels = target["labels"].to(device)
+    ignore = target.get("ignore", torch.zeros_like(labels, dtype=torch.bool)).to(device)
+    return boxes[ignore], labels[ignore]
+
+
 def _target_scale(target: dict, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
     size = target.get("size", target.get("orig_size"))
     if size is None:
@@ -106,10 +113,15 @@ def cape_hypothesis_loss(cape: CapePredictions, targets: list[dict], weights: di
 
     for bi, target in enumerate(targets):
         gt_boxes, gt_labels = _human_targets(target, device)
+        ignored_boxes, _ = _ignored_targets(target, device)
         pred_boxes = final_readout.boxes[bi]
         pred_scores = final_readout.scores[bi]
         pred_inds, gt_inds = match_hypotheses(pred_boxes, pred_scores, gt_boxes)
         conf_target = torch.zeros_like(pred_scores)
+        valid_conf = torch.ones_like(pred_scores, dtype=torch.bool)
+        if ignored_boxes.numel() > 0:
+            ignored_iou = box_iou(pred_boxes, ignored_boxes)
+            valid_conf = ignored_iou.max(dim=1).values < float(weights.get("ignore_iou_threshold", 0.5))
         if pred_inds.numel() > 0:
             scale = _target_scale(target, device, pred_boxes.dtype)
             matched_gt = gt_boxes[gt_inds]
@@ -130,7 +142,9 @@ def cape_hypothesis_loss(cape: CapePredictions, targets: list[dict], weights: di
             else:
                 cls_loss = cls_loss + F.cross_entropy(logits, gt_labels[gt_inds].clamp(0, logits.shape[-1] - 1), reduction="sum")
             matched_count = matched_count + pred_inds.numel()
-        conf_loss = conf_loss + F.binary_cross_entropy_with_logits(final_readout.conf_logits[bi], conf_target)
+            valid_conf[pred_inds] = True
+        conf_per_hyp = F.binary_cross_entropy_with_logits(final_readout.conf_logits[bi], conf_target, reduction="none")
+        conf_loss = conf_loss + (conf_per_hyp * valid_conf.to(conf_per_hyp.dtype)).sum() / valid_conf.float().sum().clamp(min=1.0)
 
     denom = matched_count.clamp(min=1.0)
     box_loss = box_loss / denom

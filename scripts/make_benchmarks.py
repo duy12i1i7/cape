@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from cape_det.datasets import default_experiment_config
 from cape_det.metrics.reporting import verify_report_files, write_all_reports
 from cape_det.metrics.unified_evaluator import UnifiedEvaluator
 from cape_det.utils.config import load_config
@@ -16,7 +17,7 @@ from cape_det.utils.io import read_json, write_json
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="configs/defaults.yaml")
+    parser.add_argument("--config", default=None)
     parser.add_argument("--predictions", required=True)
     parser.add_argument("--targets", required=True)
     parser.add_argument("--dataset", default=None)
@@ -27,7 +28,10 @@ def main() -> None:
     parser.add_argument("--metrics-rows-output", default=None)
     parser.add_argument("--export-optional-curves", action="store_true")
     args = parser.parse_args()
-    config = load_config(args.config)
+    config_path = Path(args.config) if args.config else None
+    if config_path is None and args.dataset in {"visdrone", "tinyperson"}:
+        config_path = default_experiment_config(args.dataset, "cape")
+    config = load_config(config_path or "configs/defaults.yaml")
     evaluator = UnifiedEvaluator(
         config,
         args.dataset or config.get("dataset", {}).get("name", "unknown"),

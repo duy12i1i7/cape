@@ -30,6 +30,11 @@ Cả hai phải dùng:
 - **unified size bins**
 - **SAR-oriented metrics**
 
+Repo hiện hỗ trợ luồng dataset kiểu Ultralytics: người dùng có thể truyền
+`--dataset visdrone` hoặc `--dataset tinyperson`; hệ thống sẽ resolve registry,
+kiểm tra cache raw/prepared, tải nếu có URL khả dụng, normalize sang layout
+`data/prepared/{dataset}`, validate, rồi tiếp tục train/eval.
+
 ## Bộ đánh giá chính
 
 ### 4 bảng bắt buộc

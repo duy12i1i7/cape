@@ -1,0 +1,17 @@
+dataset:
+  name: visdrone
+  registry_name: visdrone
+  auto_prepare: true
+  root: data/prepared/visdrone
+  raw_root: null
+  prepared_root: null
+  train_split: train
+  val_split: val
+  test_split: test
+  image_dir_template: images/{split}
+  annotation_dir_template: labels/{split}
+  label_mode: human_unified_single
+  visdrone_people_policy: merge
+  visdrone_ignore_category_ids: [0]
+  class_names:
+    - person

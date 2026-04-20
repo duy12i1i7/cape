@@ -172,16 +172,26 @@ def validate_metrics_rows(metrics_rows: list[dict]) -> None:
     table_rows = build_all_table_rows(metrics_rows)
     validate_table_rows(table_rows)
     for row_idx, row in enumerate(metrics_rows):
+        for col in sorted(set(TABLE1_COLUMNS + TABLE2_COLUMNS + TABLE4_COLUMNS)):
+            if col not in row:
+                raise ValueError(f"metrics row {row_idx} missing required table column source: {col}")
         if "threshold_sweep" not in row:
             raise ValueError(f"metrics row {row_idx} missing threshold_sweep for Figure 2/Figure 3 CSV export")
         if "pr_curve" not in row:
             raise ValueError(f"metrics row {row_idx} missing pr_curve for Figure 1 CSV export")
         if "operating_points" not in row:
             raise ValueError(f"metrics row {row_idx} missing operating_points for Table 3 and Figure 3 markers")
+        operating_points = row.get("operating_points", {})
+        for col in TABLE3_COLUMNS:
+            if col in {"Dataset", "EvalMode"}:
+                continue
+            if col not in operating_points:
+                raise ValueError(f"metrics row {row_idx} missing operating point source: {col}")
 
 
 def write_all_tables(metrics_rows: list[dict], output_dir: str | Path = "outputs/reports") -> dict[str, Path]:
     output_dir = ensure_dir(output_dir)
+    validate_metrics_rows(metrics_rows)
     specs = build_all_table_rows(metrics_rows)
     validate_table_rows(specs)
     paths: dict[str, Path] = {}

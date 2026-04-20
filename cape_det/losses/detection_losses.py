@@ -6,12 +6,22 @@ import torch.nn.functional as F
 from cape_det.models.heads.decode import DEFAULT_STRIDES
 
 
-def sigmoid_focal_loss(logits: torch.Tensor, targets: torch.Tensor, alpha: float = 0.25, gamma: float = 2.0) -> torch.Tensor:
+def sigmoid_focal_loss(
+    logits: torch.Tensor,
+    targets: torch.Tensor,
+    alpha: float = 0.25,
+    gamma: float = 2.0,
+    valid_mask: torch.Tensor | None = None,
+) -> torch.Tensor:
     prob = logits.sigmoid()
     ce = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
     p_t = prob * targets + (1 - prob) * (1 - targets)
     alpha_t = alpha * targets + (1 - alpha) * (1 - targets)
-    return (alpha_t * (1 - p_t).pow(gamma) * ce).mean()
+    loss = alpha_t * (1 - p_t).pow(gamma) * ce
+    if valid_mask is not None:
+        valid = valid_mask.expand_as(loss).to(loss.dtype)
+        return (loss * valid).sum() / valid.sum().clamp(min=1.0)
+    return loss.mean()
 
 
 def assign_anchor_free_targets(
@@ -29,6 +39,7 @@ def assign_anchor_free_targets(
         obj_t = torch.zeros((b, 1, h, w), device=device)
         box_t = torch.zeros((b, 4, h, w), device=device)
         pos = torch.zeros((b, 1, h, w), dtype=torch.bool, device=device)
+        ignore_mask = torch.zeros((b, 1, h, w), dtype=torch.bool, device=device)
         stride = strides[level]
         for bi, target in enumerate(targets):
             boxes = target["boxes"].to(device)
@@ -36,6 +47,11 @@ def assign_anchor_free_targets(
             ignore = target.get("ignore", torch.zeros_like(labels, dtype=torch.bool)).to(device)
             for box, label, ign in zip(boxes, labels, ignore):
                 if bool(ign):
+                    x1 = int(torch.floor(box[0] / stride).long().clamp(0, w - 1).item())
+                    y1 = int(torch.floor(box[1] / stride).long().clamp(0, h - 1).item())
+                    x2 = int(torch.ceil(box[2] / stride).long().clamp(0, w - 1).item())
+                    y2 = int(torch.ceil(box[3] / stride).long().clamp(0, h - 1).item())
+                    ignore_mask[bi, 0, y1 : y2 + 1, x1 : x2 + 1] = True
                     continue
                 bw = box[2] - box[0]
                 bh = box[3] - box[1]
@@ -52,7 +68,7 @@ def assign_anchor_free_targets(
                     [center_x - box[0], center_y - box[1], box[2] - center_x, box[3] - center_y]
                 ).clamp(min=0.0) / stride
                 pos[bi, 0, cy, cx] = True
-        assigned[level] = {"class": cls_t, "objectness": obj_t, "box": box_t, "positive": pos}
+        assigned[level] = {"class": cls_t, "objectness": obj_t, "box": box_t, "positive": pos, "ignore": ignore_mask}
     return assigned
 
 
@@ -71,9 +87,11 @@ def global_detection_loss(
     pos_count = torch.tensor(0.0, device=device)
     for level, out in outputs.items():
         tgt = assigned[level]
-        cls_loss = cls_loss + sigmoid_focal_loss(out["class_logits"], tgt["class"])
+        valid = (~tgt["ignore"]) | tgt["positive"]
+        cls_loss = cls_loss + sigmoid_focal_loss(out["class_logits"], tgt["class"], valid_mask=valid)
         if "objectness" in out:
-            obj_loss = obj_loss + F.binary_cross_entropy_with_logits(out["objectness"], tgt["objectness"])
+            obj_per_cell = F.binary_cross_entropy_with_logits(out["objectness"], tgt["objectness"], reduction="none")
+            obj_loss = obj_loss + (obj_per_cell * valid.to(obj_per_cell.dtype)).sum() / valid.float().sum().clamp(min=1.0)
         pos = tgt["positive"].expand_as(out["box_reg"])
         if pos.any():
             box_loss = box_loss + F.l1_loss(out["box_reg"][pos], tgt["box"][pos], reduction="sum")

@@ -27,11 +27,14 @@ def train_one_epoch(
     grad_clip_norm: float | None = 1.0,
     logger=None,
     log_every: int = 20,
+    limit_batches: int | None = None,
 ) -> dict[str, float]:
     model.train()
     totals: dict[str, float] = {}
     num_steps = 0
     for step, (images, targets) in enumerate(loader):
+        if limit_batches is not None and step >= int(limit_batches):
+            break
         images = images.to(device, non_blocking=True)
         targets = targets_to_device(targets, device)
         optimizer.zero_grad(set_to_none=True)
@@ -60,11 +63,13 @@ def train_one_epoch(
 
 
 @torch.no_grad()
-def validate(model: torch.nn.Module, loader: Iterable, evaluator, device: torch.device) -> dict:
+def validate(model: torch.nn.Module, loader: Iterable, evaluator, device: torch.device, limit_batches: int | None = None) -> dict:
     model.eval()
     active = []
     budget = []
-    for images, targets in loader:
+    for step, (images, targets) in enumerate(loader):
+        if limit_batches is not None and step >= int(limit_batches):
+            break
         images = images.to(device, non_blocking=True)
         targets_device = targets_to_device(targets, device)
         outputs = model(images, targets_device)
