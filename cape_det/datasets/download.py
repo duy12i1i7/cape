@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import shutil
 import tarfile
 import time
@@ -70,6 +71,15 @@ def is_tinyperson_minimal_url(url: str) -> bool:
     return url.strip().lower() in {"tinyperson://minimal", "tinyperson:minimal"}
 
 
+def _call_with_supported_kwargs(func: Callable[..., object], /, **kwargs: object) -> object:
+    try:
+        supported = inspect.signature(func).parameters
+    except (TypeError, ValueError):
+        return func(**kwargs)
+    filtered = {key: value for key, value in kwargs.items() if key in supported}
+    return func(**filtered)
+
+
 def download_google_drive_folder(url: str, destination: str | Path, logger: LogFn | None = None) -> Path:
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
@@ -85,7 +95,13 @@ def download_google_drive_folder(url: str, destination: str | Path, logger: LogF
             "Install with `python -m pip install gdown` or use TINYPERSON_RAW_ROOT."
         ) from exc
     _log(f"[dataset] downloading Google Drive folder: {url}", logger)
-    result = gdown.download_folder(url=url, output=str(destination), quiet=False, use_cookies=False)
+    result = _call_with_supported_kwargs(
+        gdown.download_folder,
+        url=url,
+        output=str(destination),
+        quiet=False,
+        use_cookies=False,
+    )
     if result is None:
         raise RuntimeError(f"Failed to download Google Drive folder: {url}")
     marker.write_text("ok\n", encoding="utf-8")
@@ -105,7 +121,14 @@ def download_google_drive_file(url: str, destination: str | Path, logger: LogFn 
             "Google Drive auto-download requires gdown. Install with `python -m pip install gdown`."
         ) from exc
     _log(f"[dataset] downloading Google Drive file: {url}", logger)
-    result = gdown.download(url=url, output=str(destination), quiet=False, fuzzy=True, use_cookies=False)
+    result = _call_with_supported_kwargs(
+        gdown.download,
+        url=url,
+        output=str(destination),
+        quiet=False,
+        fuzzy=True,
+        use_cookies=False,
+    )
     if result is None:
         raise RuntimeError(f"Failed to download Google Drive file: {url}")
     return Path(result)

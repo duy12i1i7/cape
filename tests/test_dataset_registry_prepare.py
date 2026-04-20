@@ -1,12 +1,13 @@
 import json
 import subprocess
 import sys
+import types
 from pathlib import Path
 
 from PIL import Image
 
 from cape_det.datasets.prepare import ensure_prepared_dataset
-from cape_det.datasets.download import download_and_extract
+from cape_det.datasets.download import download_and_extract, download_google_drive_file
 from cape_det.datasets.registry import dataset_prepared_root, dataset_raw_root, get_dataset_spec
 from cape_det.datasets.validators import validate_prepared_dataset
 
@@ -125,6 +126,21 @@ def test_tinyperson_minimal_download_dispatch_is_mockable(monkeypatch, tmp_path:
     assert len(downloaded) == 4
     assert any(path.name == "tiny_set_train.json" for path in downloaded)
     assert paths[-1] == tmp_path / "raw_tiny" / "tiny_set" / "test"
+
+
+def test_google_drive_file_download_handles_older_gdown_signatures(monkeypatch, tmp_path: Path):
+    destination = tmp_path / "tiny_set" / "train.tar.gz"
+
+    def fake_download(url, output, quiet=False):
+        path = Path(output)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"fake")
+        return str(path)
+
+    monkeypatch.setitem(sys.modules, "gdown", types.SimpleNamespace(download=fake_download))
+    path = download_google_drive_file("https://drive.google.com/uc?id=fake", destination)
+    assert path == destination
+    assert path.read_bytes() == b"fake"
 
 
 def test_download_dispatch_is_mockable(monkeypatch, tmp_path: Path):
